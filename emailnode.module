@@ -1,0 +1,240 @@
+<?php
+//$Id$
+/**
+ * MADE BY KARTIK MANDAVILLE(kar2905)
+* This module provides an administrative interface
+*This module sends a particular node content to group of users selected through checkboxes . The users displayed in the list are having the same taxonomy terms as of the node .
+* @file
+*/
+/**
+Implementation of hook_help()
+@param $path It is the path
+@param $arg
+*/
+
+function emailnode_help($path,$arg)
+{
+if($path=='admin/help#emailnode')
+{
+$txt='This module provides a way for an administrator to send the node content through email to a user.'.'It assumes that the drupal mailer is configured .';
+return '<p>'.t($txt).'</p>';
+}
+}
+/**
+ * Implementation of hook_menu()
+ */
+function emailnode_menu() {
+
+      $items['node/%/emailnode'] = array(
+      'title' => 'Send Email ',
+      'page callback' => 'emailnode_display_users',
+      'page arguments' => array(1), // <- nodeID (from % in node path)
+      'access arguments' => array('administer users'),
+      'type' => MENU_LOCAL_TASK,
+   );
+   
+   return $items;
+}
+/**
+* Displays users and checkboxes
+* This creates the form necessary to select users through checkboxes and modify the node content
+*
+* @param $nodeid 
+*the node content which has to be sent
+*@return
+*HTML.
+*/
+function emailnode_display_users($nodeid)
+{
+
+$nodeid=intval($nodeid);
+if($nodeid == 0)
+{
+return t('Node id must be an integer .');
+}
+$node_content=node_load($nodeid);
+//echo $node_content->body;
+if(empty($node_content))
+{
+return t('No such node found');
+}
+
+$sb= '<p>'.t('Please select users through checkboxes ').'</p>';
+$sb .=drupal_get_form('emailnode_select_users_form',$nodeid);
+return $sb;
+}
+
+/**
+ * Displays a list of users who have the same taxonomy term as of the node and the node content ( Subject , Body ) . The users are selected through checkboxes
+ * @param $nodeid 
+ * identifies the node content to be sent 
+ *@return 
+ * HTML
+ */
+  
+function emailnode_select_users_form($context,$nodeid)
+{
+//	echo $nodeid;
+	$node_content=node_load($nodeid);
+	 $body=$node_content->body;
+ $subject=$node_content->title;
+$form['users']=array(
+'#type' => 'fieldset',
+'#title' => t("Users"),
+);
+	//$sql="SELECT users.name,users.uid from users ";                    
+	$res=db_query('SELECT users.name,users.uid FROM {users}' );                 // query for selecting all users
+	while($row=db_fetch_object($res))
+	{
+		if($row->uid != 0)
+		{
+			$check=0;
+//		$sql3="SELECT tid FROM term_node WHERE nid='".$nodeid."'";                       
+		$res3=db_query('SELECT term_node.tid FROM {term_node} WHERE term_node.nid=%d',$nodeid);   // query for selecting the taxonomy term of the particular node
+		
+		while($row3=db_fetch_object($res3))
+		{
+		//	$sql4="SELECT tid FROM userstax WHERE uid='".$row->uid."'";
+		$res4=db_query('SELECT userstax.tid FROM {userstax} WHERE userstax.uid=%d',$row->uid);
+			while($row4=db_fetch_object($res4))
+			{
+				if($row3->tid==$row4->tid)
+					$check=1;
+				if($check==1)
+				break;
+			}
+			if($check==1)
+			break;
+		}
+		if($check==1)
+		{
+			
+		$ch='ch'.$row->uid;
+		//echo $ch;
+		$form['users'][$ch] =array(
+		     '#type' => 'checkbox',
+     '#title' => $row->name,
+     '#default_value' => 0,
+     '#description' =>
+       t('If this is checked, the message will also be sent to '.$row->name),
+  );
+ // echo $form['users'][$ch]->title;
+			}}
+}
+
+  // Create a fieldset for the body:
+  $form['message'] = array(
+     '#type' => 'fieldset',
+     '#title' => t('Compose the Message'),
+  );
+  // Textfield for subject of the body
+  $form['message']['subject'] = array(
+     '#type' => 'textfield',
+     '#title' => t('Subject'),
+     '#default_value'=>$subject,
+     '#size' => 50,
+     '#maxlengh' => 255,
+     '#description' => t('The subject of the email message.'),
+  );
+  // And a text area for the body.
+  $form['message']['body'] = array(
+     '#type' => 'textarea',
+     '#title' => t('Message'),
+     '#cols' => 50,
+     '#rows' => 5,
+    '#default_value' => $body,
+    '#description' => t('The body of the email message.'),
+  );
+  // Create a fieldset for details
+  $form['details'] = array(
+     '#type' => 'fieldset',
+     '#title' => t("Details"),
+  );
+  // Checkbox: if checked, CC the author, too.
+  $form['details']['cc_me'] = array(
+     '#type' => 'checkbox',
+     '#title' => t('BCC Yourself'),
+     '#default_value' => 0,
+     '#description' =>
+       t('If this is checked, the message will also be sent to you.'),
+  );
+	  // Finally, a submit button:
+  $form['submit'] = array(
+     '#type' => 'submit',
+     '#value' => t('Send Email'),
+  );
+  return $form;
+}
+
+/**
+ * Form submission function
+ * 
+ * 
+ */
+ 
+ function emailnode_select_users_form_submit($form,&$form_state)
+ {
+	 	 $form_values=$form_state['values'];
+	$sql2="SELECT MAX(users.uid) from users ";
+	$res2=db_query($sql2); 
+	$row2=db_fetch_object($res2);
+	$variables=get_object_vars($row2);
+	$keys=array_keys($variables);
+	 $max=$variables[$keys[0]];
+
+	 $i=1;
+	 for ($i=1;$i<=$max;$i++)
+	 {
+		 $c='ch'.$i;
+		     if($form_values[$c]==1)
+	     {
+			 $userid =$i;
+			 $account= user_load($userid);
+				$user[]=$account->name;
+				$email[]=$account->mail;
+		 }
+	 }
+	 $emails=implode(',',$email);
+
+   $form_values['to']=$emails;
+   $send=drupal_mail(
+      'emailnode',
+      'composemessage',
+      $emails,
+      user_preferred_language($account),
+      $form_values,
+      variable_get('site_mail', null),
+      true // Automatically send
+   );
+  $form_state['redirect'] = sprintf('admin/content/node/');
+ }
+ 
+/**
+ * Implementation of hook_mail 
+ * 
+ */
+function emailnode_mail($key, &$message, $params) {
+   // Just catch calls to this hook from compose form.
+   if ($key == 'composemessage') {
+     $language = $params['language'];
+     //$account = $params['to'];
+     if ($params['cc_me']) 
+     {
+       // Look up current user's email address:
+       $my_account = user_current_load(null);
+       $message['headers']['bcc'] = $my_account->mail;
+     }
+     $users=$params['to'];
+     $message['to'] = $users;
+    //$message['headers']['cc'] = implode(',', $account);
+
+     $message['subject'] =
+       t('Drupal Message: ', array(), $language->language);
+     // If these were automatically-generated messages, they should be
+     // run through t(), but since text is user-entered, don't use
+     // t().
+     $message['subject'] .= $params['subject'];
+     $message['body'] = $params['body'];
+   }
+}
+

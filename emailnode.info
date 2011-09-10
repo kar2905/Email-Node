@@ -1,0 +1,9 @@
+;$Id$
+name='Email Node'
+description='Email a particular node to users selected through checkboxes'
+core=6.x
+php=5.x
+version=0.1
+dependencies[] = taxonomy
+dependencies[]= userstax
+package = Email

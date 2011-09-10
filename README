@@ -1,0 +1,46 @@
+Email Node
+================================================================================
+
+Summary
+--------------------------------------------------------------------------------
+
+THe Email Node module lets the admin to send a node to a list of users seleceted through checkboxes 
+
+
+Requirements
+--------------------------------------------------------------------------------
+
+The Email Node Term module requires the Taxonomy (core) and the UsersTax module .
+The Drupal Mailer should be configured 
+
+
+Installation
+--------------------------------------------------------------------------------
+
+1. Copy the Emailnode folder to sites/all/modules or to a site-specific
+   modules folder.
+2. Go to Administer > Site building > Modules and enable the Email Node     module.
+
+
+Usage
+--------------------------------------------------------------------------------
+
+1. Associate users with the taxonomy using the Userstax Module .
+2. Go to Administer -> Content Management -> Content -> Select the node you wish to email . Then click on Send Email .
+3. Select the users through the checkboxes and modify the subject and the body if needed .
+4. Click on Send Mail . Tada ! Your mail is sent 
+
+
+
+Support
+--------------------------------------------------------------------------------
+Please contact kar2905[at]gmail[dot]com
+
+
+
+Credits
+--------------------------------------------------------------------------------
+
+Author: Kartik Mandaville <kar2905@gmail.com>
+Blog : (http://mkartik.com/)
+
